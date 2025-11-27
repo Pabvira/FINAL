@@ -1,0 +1,217 @@
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title> Sistema de Reservas</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin:0; padding:0;}
+        .container { width: 90%; max-width: 800px; margin: 50px auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1);}
+        h2,h3 { text-align: center; }
+        input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        .hidden { display: none; }
+        .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-top: 10px;}
+        .grid button { padding: 15px; font-weight: bold; cursor: pointer; }
+        .red { color:red; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="loginDiv">
+    <h2>Ingrese su correo institucional (@utp.edu.pe)</h2>
+    <input type="email" id="correo" placeholder="correo@utp.edu.pe">
+    <button onclick="login()">Ingresar</button>
+    <p id="loginError" class="red"></p>
+</div>
+
+<div class="container hidden" id="menuDiv">
+    <h2>Bienvenido, <span id="nombreUsuario"></span></h2>
+    <p>Categoría: <b><span id="categoriaUsuario"></span></b></p>
+    <button onclick="mostrarSotano()">Realizar una reserva</button>
+    <button id="verReservasBtn" class="hidden" onclick="mostrarReservas()">Ver reservas realizadas</button>
+    <button onclick="logout()">Cerrar sesión</button>
+</div>
+
+<div class="container hidden" id="sotanoDiv">
+    <h3>Seleccione el sótano</h3>
+    <div class="grid" id="sotanoGrid"></div>
+    <button onclick="volverMenu()">Volver</button>
+</div>
+
+<div class="container hidden" id="reservaDiv">
+    <h3>Seleccionar horario para <span id="espacioSeleccionado"></span></h3>
+    <p>Fecha: <span id="fechaHoy"></span></p>
+    <label>Inicio:</label>
+    <input type="time" id="horaInicio">
+    <label>Fin:</label>
+    <input type="time" id="horaFin">
+    <button onclick="confirmarReserva()">Confirmar reserva</button>
+    <button onclick="volverSotano()">Cancelar</button>
+    <p id="reservaError" class="red"></p>
+</div>
+
+<div class="container hidden" id="adminDiv">
+    <h3>Reservas registradas</h3>
+    <table id="tablaReservas">
+        <thead>
+            <tr>
+                <th>Correo</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Sótano</th>
+                <th>Espacio</th>
+                <th>Fecha</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <button onclick="volverMenu()">Volver</button>
+</div>
+
+<script>
+    // Simular lectura de CSV local (por ahora usamos arrays)
+    const usuarios = [
+        {correo:'admin@utp.edu.pe', nombre:'Admin', categoria:'admin'},
+        {correo:'docente@utp.edu.pe', nombre:'Docente', categoria:'docente'},
+        {correo:'alumno@utp.edu.pe', nombre:'Alumno', categoria:'alumno'}
+    ];
+    let reservas = [];
+
+    let usuarioActual = null;
+    let sotanoSeleccionado = 1;
+    let espacioSeleccionado = '';
+
+    const loginDiv = document.getElementById('loginDiv');
+    const menuDiv = document.getElementById('menuDiv');
+    const sotanoDiv = document.getElementById('sotanoDiv');
+    const reservaDiv = document.getElementById('reservaDiv');
+    const adminDiv = document.getElementById('adminDiv');
+
+    function login() {
+        const correo = document.getElementById('correo').value.trim();
+        const error = document.getElementById('loginError');
+        error.textContent = '';
+        if (!correo.endsWith('@utp.edu.pe')) {
+            error.textContent = 'El correo debe ser institucional @utp.edu.pe';
+            return;
+        }
+        const user = usuarios.find(u => u.correo.toLowerCase() === correo.toLowerCase());
+        if (!user) {
+            error.textContent = 'Correo no registrado en la base.';
+            return;
+        }
+        usuarioActual = user;
+        document.getElementById('nombreUsuario').textContent = user.nombre;
+        document.getElementById('categoriaUsuario').textContent = user.categoria;
+        if (user.categoria === 'admin' || user.categoria === 'docente') {
+            document.getElementById('verReservasBtn').classList.remove('hidden');
+        }
+        loginDiv.classList.add('hidden');
+        menuDiv.classList.remove('hidden');
+    }
+
+    function logout() {
+        usuarioActual = null;
+        loginDiv.classList.remove('hidden');
+        menuDiv.classList.add('hidden');
+        sotanoDiv.classList.add('hidden');
+        reservaDiv.classList.add('hidden');
+        adminDiv.classList.add('hidden');
+    }
+
+    function mostrarSotano() {
+        menuDiv.classList.add('hidden');
+        sotanoDiv.classList.remove('hidden');
+        const grid = document.getElementById('sotanoGrid');
+        grid.innerHTML = '';
+        for(let i=1;i<=3;i++){
+            const btn = document.createElement('button');
+            btn.textContent = 'Sótano ' + i;
+            btn.onclick = ()=> { seleccionarSotano(i); };
+            grid.appendChild(btn);
+        }
+    }
+
+    function seleccionarSotano(sotano) {
+        sotanoSeleccionado = sotano;
+        // Generar espacios
+        sotanoDiv.innerHTML = '<h3>Sótano '+sotano+' - Seleccione su espacio</h3><div class="grid" id="espaciosGrid"></div><button onclick="volverMenu()">Volver</button>';
+        const grid = document.getElementById('espaciosGrid');
+        for(let r=0;r<4;r++){
+            for(let c=0;c<6;c++){
+                let code = ('0'+(r*6+c+1)).slice(-2)+String.fromCharCode(65+c);
+                const btn = document.createElement('button');
+                btn.textContent = code;
+                btn.onclick = ()=> seleccionarEspacio(code);
+                grid.appendChild(btn);
+            }
+        }
+    }
+
+    function seleccionarEspacio(code){
+        espacioSeleccionado = code;
+        document.getElementById('espacioSeleccionado').textContent = code;
+        document.getElementById('fechaHoy').textContent = new Date().toISOString().split('T')[0];
+        // Default horarios
+        const now = new Date();
+        let h = now.getHours()+1;
+        if(h<8) h=8;
+        if(h>22) h=22;
+        document.getElementById('horaInicio').value = ('0'+h).slice(-2)+':00';
+        document.getElementById('horaFin').value = ('0'+(h+1)).slice(-2)+':00';
+        sotanoDiv.classList.add('hidden');
+        reservaDiv.classList.remove('hidden');
+    }
+
+    function volverMenu(){
+        sotanoDiv.classList.add('hidden');
+        reservaDiv.classList.add('hidden');
+        adminDiv.classList.add('hidden');
+        menuDiv.classList.remove('hidden');
+    }
+
+    function volverSotano(){
+        reservaDiv.classList.add('hidden');
+        mostrarSotano();
+    }
+
+    function confirmarReserva(){
+        const inicio = document.getElementById('horaInicio').value;
+        const fin = document.getElementById('horaFin').value;
+        const fecha = new Date().toISOString().split('T')[0];
+        if(inicio>=fin){
+            document.getElementById('reservaError').textContent = 'Horario inválido.';
+            return;
+        }
+        // Validar conflictos
+        const conflict = reservas.find(r=> r.sotano===sotanoSeleccionado && r.espacio===espacioSeleccionado && r.fecha===fecha && !(fin<=r.inicio || inicio>=r.fin));
+        if(conflict){
+            document.getElementById('reservaError').textContent = 'Espacio ya reservado.';
+            return;
+        }
+        reservas.push({correo:usuarioActual.correo,nombre:usuarioActual.nombre,categoria:usuarioActual.categoria,sotano:sotanoSeleccionado,espacio:espacioSeleccionado,fecha:fecha,inicio:inicio,fin:fin});
+        alert('Reserva realizada correctamente');
+        reservaDiv.classList.add('hidden');
+        menuDiv.classList.remove('hidden');
+    }
+
+    function mostrarReservas(){
+        menuDiv.classList.add('hidden');
+        adminDiv.classList.remove('hidden');
+        const tbody = document.querySelector('#tablaReservas tbody');
+        tbody.innerHTML = '';
+        reservas.forEach(r=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.correo}</td><td>${r.nombre}</td><td>${r.categoria}</td><td>${r.sotano}</td><td>${r.espacio}</td><td>${r.fecha}</td><td>${r.inicio}</td><td>${r.fin}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+
+</body>
+</html>
