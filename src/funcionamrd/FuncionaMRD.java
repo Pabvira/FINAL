@@ -15,13 +15,12 @@ import java.util.List;
 
 public class FuncionaMRD {
 
-    // Rutas de archivos
+    
     private static final String USUARIOS_CSV = "data/usuarios.csv";
     private static final String RESERVAS_CSV = "data/reservas.csv";
     private static final DateTimeFormatter HORA_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter FECHA_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    // Controladores
     private ControladorUsuarios controladorUsuarios;
     private ControladorReservas controladorReservas;
 
@@ -42,7 +41,7 @@ public class FuncionaMRD {
     }
 
     private void start() {
-        // Asegurar carpeta data
+        
         try {
             Files.createDirectories(Paths.get("data"));
         } catch (IOException e) {
@@ -52,14 +51,11 @@ public class FuncionaMRD {
         login.setVisible(true);
     }
 
-    /* -------------------------
-           MODELOS / CONTROLADORES
-       ------------------------- */
 
     class Usuario {
         String correo;
         String nombre;
-        String categoria; // alumno, admin, docente
+        String categoria; 
 
         Usuario(String correo, String nombre, String categoria) {
             this.correo = correo;
@@ -72,8 +68,8 @@ public class FuncionaMRD {
         String correo;
         String nombre;
         String categoria;
-        int sotano; // 1..3
-        String codigoEspacio; // e.g., 01A
+        int sotano; 
+        String codigoEspacio; 
         LocalDate fecha;
         LocalTime inicio;
         LocalTime fin;
@@ -104,10 +100,10 @@ public class FuncionaMRD {
             usuarios.clear();
             if (!Files.exists(csvPath)) return;
             try (BufferedReader br = Files.newBufferedReader(csvPath)) {
-                String line = br.readLine(); // header
+                String line = br.readLine(); 
                 while ((line = br.readLine()) != null) {
                     if (line.trim().isEmpty()) continue;
-                    // correo,nombre,categoria
+                   
                     String[] parts = line.split(",", 3);
                     if (parts.length < 3) continue;
                     Usuario u = new Usuario(parts[0].trim(), parts[1].trim(), parts[2].trim());
@@ -188,17 +184,17 @@ public class FuncionaMRD {
             return lista;
         }
 
-        // consulta si hay conflicto con una reserva existente (mismo sotano, mismo espacio, misma fecha y horas se solapan)
+       
         public boolean hayConflicto(Reserva nueva) {
             List<Reserva> existentes = listarReservas();
             for (Reserva r : existentes) {
                 if (r.sotano == nueva.sotano && r.codigoEspacio.equals(nueva.codigoEspacio) && r.fecha.equals(nueva.fecha)) {
-                    // comprobar solapamiento
+                    
                     if (!(nueva.fin.isBefore(r.inicio) || nueva.inicio.isAfter(r.fin) || nueva.fin.equals(r.inicio) || nueva.inicio.equals(r.fin))) {
-                        // overlapping
+                     
                         return true;
                     }
-                    // Consider inclusive overlap; safer to check ranges intersection:
+                    
                     if (nueva.inicio.isBefore(r.fin) && nueva.fin.isAfter(r.inicio)) return true;
                 }
             }
@@ -206,9 +202,7 @@ public class FuncionaMRD {
         }
     }
 
-    /* -------------------------
-           VENTANAS / UI
-       ------------------------- */
+
 
     class LoginFrame extends JFrame {
         private JTextField correoField;
@@ -346,7 +340,7 @@ public class FuncionaMRD {
         private Usuario usuario;
         private int sotano;
         private JPanel gridPanel;
-        // Definimos tamaño del mapa (filas x cols) por sótano (ejemplo simple)
+      
         private final int ROWS = 4;
         private final int COLS = 6;
 
@@ -367,7 +361,7 @@ public class FuncionaMRD {
             main.add(top, BorderLayout.NORTH);
 
             gridPanel = new JPanel(new GridLayout(ROWS, COLS, 5,5));
-            // Generar códigos (dos dígitos + letra) — por fila/col para variedad
+            
             char letter = 'A';
             for (int r=0; r<ROWS; r++) {
                 for (int c=0; c<COLS; c++) {
@@ -376,7 +370,7 @@ public class FuncionaMRD {
                     JButton spaceBtn = new JButton(code);
                     spaceBtn.setPreferredSize(new Dimension(100,60));
                     spaceBtn.addActionListener(e -> {
-                        // Al seleccionar espacio, abrir selector horario
+                     
                         TimeSelectionDialog dialog = new TimeSelectionDialog(this, usuario, sotano, code);
                         dialog.setVisible(true);
                     });
@@ -427,7 +421,7 @@ public class FuncionaMRD {
 
             JPanel center = new JPanel(new GridLayout(3,1,5,5));
             center.add(new JLabel("Fecha: (se toma la fecha de hoy) " + LocalDate.now().format(FECHA_FMT)));
-            // Check domingo
+        
             if (LocalDate.now().getDayOfWeek() == DayOfWeek.SUNDAY) {
                 center.add(new JLabel("<html><b style='color:red'>Hoy es Domingo: no se permiten reservas.</b></html>"));
                 confirmarBtn = new JButton("Cerrar");
@@ -472,9 +466,9 @@ public class FuncionaMRD {
             buttons.add(confirmarBtn);
             p.add(buttons, BorderLayout.SOUTH);
 
-            // Inicializar combos con valores por defecto (próxima media hora múltiplo)
+            
             LocalTime now = LocalTime.now();
-            // Round up to next 15 minutes maybe; but rule is 30 min. We'll allow times in 15min steps but enforce 30min min start distance.
+            
             LocalTime defaultStart = now.plusMinutes(30).withSecond(0).withNano(0);
             if (defaultStart.isBefore(LocalTime.of(8,0))) defaultStart = LocalTime.of(8,0);
             if (defaultStart.isAfter(LocalTime.of(22,30))) defaultStart = LocalTime.of(22,30);
@@ -490,7 +484,7 @@ public class FuncionaMRD {
         }
 
         private String[] horasArray() {
-            String[] arr = new String[16]; // 8..23
+            String[] arr = new String[16]; 
             int idx = 0;
             for (int h=8; h<=23; h++) {
                 arr[idx++] = String.format("%02d", h);
@@ -499,7 +493,7 @@ public class FuncionaMRD {
         }
 
         private String[] minsArray() {
-            // pasos de 15 min (00, 15, 30, 45) para facilidad
+          
             return new String[] {"00","15","30","45"};
         }
 
@@ -518,7 +512,7 @@ public class FuncionaMRD {
                 LocalTime inicio = LocalTime.of(sh, sm);
                 LocalTime fin = LocalTime.of(eh, em);
 
-                // Reglas básicas
+        
                 LocalTime minInicio = LocalTime.of(8,0);
                 LocalTime maxFin = LocalTime.of(23,0);
 
@@ -527,7 +521,7 @@ public class FuncionaMRD {
                     return;
                 }
 
-                // No reservar horas ya pasadas del día y no permitir inicios dentro de 30 minutos de ahora
+                /
                 LocalDate hoyDate = LocalDate.now();
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime inicioDateTime = LocalDateTime.of(hoyDate, inicio);
@@ -540,14 +534,14 @@ public class FuncionaMRD {
                     return;
                 }
 
-                // Chequear conflicto con reservas existentes
+                
                 Reserva nueva = new Reserva(usuario.correo, usuario.nombre, usuario.categoria, sotano, codigo, hoyDate, inicio, fin);
                 if (controladorReservas.hayConflicto(nueva)) {
                     JOptionPane.showMessageDialog(this, "El espacio ya está reservado en ese horario.");
                     return;
                 }
 
-                // Mostrar resumen y confirmación
+               
                 String resumen = String.format("Resumen de reserva:\n\nNombre: %s\nCategoría: %s\nSótano: %d\nEspacio: %s\nFecha: %s\nHorario: %s - %s\n\nConfirmar?",
                         usuario.nombre,
                         usuario.categoria,
@@ -558,15 +552,15 @@ public class FuncionaMRD {
                         fin.format(HORA_FMT));
                 int opt = JOptionPane.showConfirmDialog(this, resumen, "Confirmar reserva", JOptionPane.YES_NO_OPTION);
                 if (opt == JOptionPane.YES_OPTION) {
-                    // Guardar
+               
                     try {
                         controladorReservas.guardarReserva(nueva);
                         JOptionPane.showMessageDialog(this, "Reserva guardada correctamente.");
-                        // Volver al menú principal del usuario
+                        
                         MainMenuFrame mm = new MainMenuFrame(usuario);
                         mm.setVisible(true);
                         this.dispose();
-                        // Cerrar el owner (map) también para regresar al menu
+                      
                         Window owner = this.getOwner();
                         if (owner != null) owner.dispose();
                     } catch (IOException ex) {
@@ -611,7 +605,7 @@ public class FuncionaMRD {
             JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
             JButton back = new JButton("Volver");
             back.addActionListener(e -> {
-                // Volver a ventana de login por simplicidad (podría volver al menu)
+               
                 LoginFrame li = new LoginFrame();
                 li.setVisible(true);
                 this.dispose();
